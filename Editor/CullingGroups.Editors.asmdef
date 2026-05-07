@@ -1,0 +1,18 @@
+{
+    "name": "CullingGroups.Editors",
+    "rootNamespace": "",
+    "references": [
+        "GUID:7db14b29c6bcae447b9251e7c20a3615"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
