@@ -13,14 +13,15 @@ namespace TW.CullingGroups
 		[SerializeField] protected float m_Cascade2Split = 0.25f;
 		public float Cascade2Split => m_Cascade2Split;
 
-		public List<CullingGroupTarget> Objects => _objects;
+		public IReadOnlyList<CullingGroupTarget> Objects => _objects;
 
-		[NonSerialized] private List<CullingGroupTarget> _objects = new();
+		[NonSerialized] private readonly List<CullingGroupTarget> _objects = new();
 
 		public ObjectsCallbackDelegate onObjectsChanges;
 		public ObjectCallbackDelegate onObjectChanges;
 		public ObjectCallbackDelegate onRemoved;
-		public event Action<CullingGroupTarget> onAdded;
+		public event Action<CullingGroupTarget> OnAdded;
+		public event Action<CullingGroupEvent> OnCullingGroupEvent;
 
 		public delegate void ObjectsCallbackDelegate(List<CullingGroupTarget> objects);
 		public delegate void ObjectCallbackDelegate(int index);
@@ -59,8 +60,10 @@ namespace TW.CullingGroups
 		{
 			_isInitialized = true;
 			Application.quitting += OnQuitting;
-			_cullingGroup = new CullingGroup();
-			_cullingGroup.onStateChanged = StateChanged;
+			_cullingGroup = new CullingGroup
+			{
+				onStateChanged = StateChanged
+			};
 			var cam = Camera.main;
 			if (!cam)
 			{
@@ -73,7 +76,6 @@ namespace TW.CullingGroups
 				point = cam.transform;
 			}
 			_cullingGroup.SetDistanceReferencePoint(point);
-
 
 			var cascade0 = distance * Cascade2Split;
 
@@ -101,6 +103,7 @@ namespace TW.CullingGroups
 			if (e.index >= _objects.Count)
 				return;
 			_objects[e.index].OnStateChange(e);
+			OnCullingGroupEvent?.Invoke(e);
 		}
 
 		public int RegisterObject(CullingGroupTarget groupObject)
@@ -112,8 +115,12 @@ namespace TW.CullingGroups
 			}
 			if (!_objects.Contains(groupObject))
 			{
+				if (groupObject.IsDynamic && !DynamicCullingGroupSingleton.IsInstantiated)
+				{
+					DynamicCullingGroupSingleton.Instance.Profile = this;
+				}
 				_objects.Add(groupObject);
-				onAdded?.Invoke(groupObject);
+				OnAdded?.Invoke(groupObject);
 				index = TryAdd(groupObject.Offset, groupObject.Radius);
 			}
 			return index;
@@ -167,21 +174,22 @@ namespace TW.CullingGroups
 
 		public void UnregisterObject(CullingGroupTarget groupObject)
 		{
-			if (_objects.Contains(groupObject))
+			if (!_objects.Contains(groupObject))
 			{
-				var index = _objects.IndexOf(groupObject);
-				onRemoved?.Invoke(index);
-				_objects.Remove(groupObject);
-				TryRemoveAt(index);
-				RefreshIndex(index);
+				return;
 			}
+			var index = _objects.IndexOf(groupObject);
+			onRemoved?.Invoke(index);
+			_objects.Remove(groupObject);
+			TryRemoveAt(index);
+			RefreshIndex(index);
 		}
 
 		private void RefreshIndex(int start)
 		{
 			for (int i = start; i < _objects.Count; i++)
 			{
-				_objects[i].RefeshIndex(i);
+				_objects[i].RefreshIndex(i);
 			}
 		}
 

@@ -28,10 +28,12 @@ namespace TW.CullingGroups
 
 		public int Distance { get; set; }
 
+		public CullingGroupEvent Current => _target.Current;
+
 		private void Awake()
 		{
 			_target.transform = transform;
-			_target.onStateChanged += OnStateChange;
+			_target.OnStateChanged += OnStateChange;
 		}
 
 		private void OnEnable()
@@ -58,6 +60,25 @@ namespace TW.CullingGroups
 				return;
 			}
 			onCullingStateChange.Invoke(e);
+		}
+
+		private void OnDrawGizmos()
+		{
+			if (Application.isPlaying && isActiveAndEnabled)
+			{
+				if (_target.IsDynamic)
+				{
+					var pos = _target.GetPoint();
+					Gizmos.color = Color.cyan;
+					Gizmos.DrawRay(pos - Vector3.up * 0.5f, Vector3.up * 0.5f);
+					Gizmos.DrawRay(pos - Vector3.right * 0.5f, Vector3.right);
+					Gizmos.DrawRay(pos - Vector3.forward * 0.5f, Vector3.forward);
+				}
+#if UNITY_EDITOR
+				UnityEditor.Handles.color = Color.yellow;
+				UnityEditor.Handles.Label(Offset, $"{_target.Distance}\n{_target.Current.isVisible}");
+#endif
+			}
 		}
 
 	}

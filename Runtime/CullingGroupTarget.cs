@@ -3,6 +3,15 @@ using UnityEngine;
 
 namespace TW.CullingGroups
 {
+	public struct CullingGroupState
+	{
+		public Vector3 Position;
+		public CullingGroupEvent groupEvent;
+		public int colliderIndex;
+		public int colliderCount;
+
+	}
+
 	[Serializable]
 	public class CullingGroupTarget
 	{
@@ -15,13 +24,17 @@ namespace TW.CullingGroups
 		[SerializeField]
 		private float m_Radius = 1f;
 
+		[SerializeField] bool _isDynamic = false;
+
+		public bool IsDynamic => _isDynamic;
+
 		public float Radius { get => m_Radius; set => m_Radius = value; }
 
 		public Vector3 Offset => transform.TransformPoint(m_Center);
 
 		public Transform transform { get; set; }
 
-		public event Action<CullingGroupEvent> onStateChanged;
+		public event Action<CullingGroupEvent> OnStateChanged;
 
 		public bool IsVisible => _current.isVisible;
 
@@ -30,6 +43,10 @@ namespace TW.CullingGroups
 		protected int _currentIndex = -1;
 
 		private CullingGroupEvent _current = new();
+
+		public CullingGroupEvent Current => _current;
+
+		private EntityId[] _colliderIds;
 
 		public void Register()
 		{
@@ -47,7 +64,7 @@ namespace TW.CullingGroups
 			_currentIndex = -1;
 		}
 
-		public void RefeshIndex(int index)
+		public void RefreshIndex(int index)
 		{
 			_currentIndex = index;
 		}
@@ -74,7 +91,50 @@ namespace TW.CullingGroups
 		public virtual void OnStateChange(CullingGroupEvent e)
 		{
 			_current = e;
-			onStateChanged?.Invoke(e);
+			OnStateChanged?.Invoke(e);
+		}
+
+		public EntityId[] GetColliderIds()
+		{
+			if (!transform)
+			{
+				return null;
+			}
+			if (_colliderIds == null)
+			{
+				RefreshColliderCache();
+			}
+
+			return _colliderIds;
+		}
+
+		private void RefreshColliderCache()
+		{
+			if (!transform)
+			{
+				return;
+			}
+			var colliders = transform.GetComponents<Collider>();
+			if (colliders == null || colliders.Length == 0)
+			{
+				return;
+			}
+			var length = colliders.Length;
+			_colliderIds = new EntityId[length];
+			for (int i = 0; i < length; i++)
+			{
+				_colliderIds[i] = colliders[i].GetEntityId();
+			}
+		}
+
+		public CullingGroupState GetState()
+		{
+			return new CullingGroupState()
+			{
+				Position = transform.TransformPoint(m_Center),
+				groupEvent = Current,
+				colliderCount = _colliderIds != null ? _colliderIds.Length : 0,
+			};
 		}
 	}
 }
