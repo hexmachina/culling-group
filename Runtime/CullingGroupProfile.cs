@@ -21,11 +21,12 @@ namespace TW.CullingGroups
 		public ObjectCallbackDelegate onObjectChanges;
 		public ObjectCallbackDelegate onRemoved;
 		public event Action<CullingGroupTarget> OnAdded;
+		public event Action<CullingGroupTarget> OnTargetRemoved;
 		public event Action<CullingGroupEvent> OnCullingGroupEvent;
 
 		public delegate void ObjectsCallbackDelegate(List<CullingGroupTarget> objects);
 		public delegate void ObjectCallbackDelegate(int index);
-
+		[NonSerialized] private readonly Dictionary<EntityId, CullingGroupTarget> _targetDict = new();
 		[NonSerialized] protected Transform _referencePoint;
 
 		public Transform ReferencePoint
@@ -55,6 +56,10 @@ namespace TW.CullingGroups
 		[NonSerialized] protected BoundingSphere[] _bounds;
 
 		[NonSerialized] private int _length = 0;
+
+		public IReadOnlyDictionary<EntityId, CullingGroupTarget> TargetDict => _targetDict;
+
+		public Camera TargetCamera => _cullingGroup.targetCamera;
 
 		public void Initialize()
 		{
@@ -113,16 +118,23 @@ namespace TW.CullingGroups
 			{
 				Initialize();
 			}
-			if (!_objects.Contains(groupObject))
+			if (_objects.Contains(groupObject))
 			{
-				if (groupObject.IsDynamic && !DynamicCullingGroupSingleton.IsInstantiated)
-				{
-					DynamicCullingGroupSingleton.Instance.Profile = this;
-				}
-				_objects.Add(groupObject);
-				OnAdded?.Invoke(groupObject);
-				index = TryAdd(groupObject.Offset, groupObject.Radius);
+				return -1;
 			}
+			if (groupObject.IsDynamic && !DynamicCullingGroupSingleton.IsInstantiated)
+			{
+				DynamicCullingGroupSingleton.Instance.Profile = this;
+			}
+			index = TryAdd(groupObject.Offset, groupObject.Radius);
+			if (index == -1)
+			{
+				Debug.LogWarning($"CullingGroupProfile: Failed to register object {groupObject}. Maximum object count reached.");
+				return -1;
+			}
+			_targetDict[groupObject.ClaimId] = groupObject;
+			_objects.Add(groupObject);
+			OnAdded?.Invoke(groupObject);
 			return index;
 		}
 
@@ -149,40 +161,21 @@ namespace TW.CullingGroups
 			return index;
 		}
 
-		private bool TryRemoveAt(int index)
-		{
-			if (_cullingGroup == null)
-			{
-				return false;
-			}
-			if (index < 0 || index >= _length)
-				return false;
-			for (int i = index; i < _length; i++)
-			{
-				var next = i + 1;
-				if (next >= _bounds.Length)
-				{
-					continue;
-				}
-				var other = _bounds[next];
-				_bounds[i] = other;
-			}
-			_length--;
-			_cullingGroup.SetBoundingSphereCount(_length);
-			return true;
-		}
-
 		public void UnregisterObject(CullingGroupTarget groupObject)
 		{
-			if (!_objects.Contains(groupObject))
+
+			int index = _objects.IndexOf(groupObject);
+			if (index == -1)
 			{
 				return;
 			}
-			var index = _objects.IndexOf(groupObject);
-			onRemoved?.Invoke(index);
-			_objects.Remove(groupObject);
-			TryRemoveAt(index);
+			_objects.RemoveAt(index);
+			_targetDict.Remove(groupObject.ClaimId);
 			RefreshIndex(index);
+			_length--;
+			_cullingGroup?.SetBoundingSphereCount(_length);
+			OnTargetRemoved?.Invoke(groupObject);
+			onRemoved?.Invoke(index);
 		}
 
 		private void RefreshIndex(int start)
@@ -190,6 +183,7 @@ namespace TW.CullingGroups
 			for (int i = start; i < _objects.Count; i++)
 			{
 				_objects[i].RefreshIndex(i);
+				_objects[i].UpdateBounds();
 			}
 		}
 

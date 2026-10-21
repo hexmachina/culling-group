@@ -3,6 +3,7 @@ using UnityEngine.Events;
 
 namespace TW.CullingGroups
 {
+	[DisallowMultipleComponent]
 	public class CullingGroupObject : MonoBehaviour
 	{
 
@@ -66,17 +67,20 @@ namespace TW.CullingGroups
 		{
 			if (Application.isPlaying && isActiveAndEnabled)
 			{
+				var pos = _target.GetPoint();
 				if (_target.IsDynamic)
 				{
-					var pos = _target.GetPoint();
 					Gizmos.color = Color.cyan;
 					Gizmos.DrawRay(pos - Vector3.up * 0.5f, Vector3.up * 0.5f);
 					Gizmos.DrawRay(pos - Vector3.right * 0.5f, Vector3.right);
 					Gizmos.DrawRay(pos - Vector3.forward * 0.5f, Vector3.forward);
 				}
 #if UNITY_EDITOR
+
+				UnityEditor.Handles.color = Color.green;
+				UnityEditor.Handles.DrawDottedLine(pos, transform.position, 4f);
 				UnityEditor.Handles.color = Color.yellow;
-				UnityEditor.Handles.Label(Offset, $"{_target.Distance}\n{_target.Current.isVisible}");
+				UnityEditor.Handles.Label(Offset, $"i:{_target.Index}\nd:{_target.Distance}\nv:{_target.Current.isVisible}");
 #endif
 			}
 		}

@@ -9,7 +9,6 @@ namespace TW.CullingGroups
 		public CullingGroupEvent groupEvent;
 		public int colliderIndex;
 		public int colliderCount;
-
 	}
 
 	[Serializable]
@@ -48,6 +47,23 @@ namespace TW.CullingGroups
 
 		private EntityId[] _colliderIds;
 
+		public int Index => _currentIndex;
+
+		private EntityId _claimId = EntityId.None;
+
+		public EntityId ClaimId
+		{
+			get
+			{
+				if (_claimId == EntityId.None)
+				{
+					_claimId = transform.gameObject.GetEntityId();
+
+				}
+				return _claimId;
+			}
+		}
+
 		public void Register()
 		{
 			if (!profile)
@@ -64,9 +80,14 @@ namespace TW.CullingGroups
 			_currentIndex = -1;
 		}
 
-		public void RefreshIndex(int index)
+		public bool RefreshIndex(int index)
 		{
+			if (index == _currentIndex)
+			{
+				return false;
+			}
 			_currentIndex = index;
+			return true;
 		}
 
 		public virtual void UpdateBounds()
@@ -82,10 +103,7 @@ namespace TW.CullingGroups
 
 		public Vector3 GetPoint()
 		{
-			if (!profile || _currentIndex == -1)
-				return Vector3.zero;
-
-			return profile.Bounds[_currentIndex].position;
+			return !profile || _currentIndex == -1 ? Vector3.zero : profile.Bounds[_currentIndex].position;
 		}
 
 		public virtual void OnStateChange(CullingGroupEvent e)
@@ -131,7 +149,7 @@ namespace TW.CullingGroups
 		{
 			return new CullingGroupState()
 			{
-				Position = transform.TransformPoint(m_Center),
+				Position = Offset,
 				groupEvent = Current,
 				colliderCount = _colliderIds != null ? _colliderIds.Length : 0,
 			};
