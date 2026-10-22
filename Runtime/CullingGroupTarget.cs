@@ -7,6 +7,7 @@ namespace TW.CullingGroups
 	{
 		public Vector3 Position;
 		public CullingGroupEvent groupEvent;
+		public EntityId claimId;
 		public int colliderIndex;
 		public int colliderCount;
 	}
@@ -152,6 +153,7 @@ namespace TW.CullingGroups
 				Position = Offset,
 				groupEvent = Current,
 				colliderCount = _colliderIds != null ? _colliderIds.Length : 0,
+				claimId = ClaimId,
 			};
 		}
 	}
