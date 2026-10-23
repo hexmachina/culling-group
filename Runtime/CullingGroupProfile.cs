@@ -38,6 +38,7 @@ namespace TW.CullingGroups
 				if (_referencePoint != value)
 				{
 
+					Initialize();
 					_referencePoint = value;
 					_cullingGroup?.SetDistanceReferencePoint(_referencePoint);
 
@@ -59,10 +60,22 @@ namespace TW.CullingGroups
 
 		public IReadOnlyDictionary<EntityId, CullingGroupTarget> TargetDict => _targetDict;
 
-		public Camera TargetCamera => _cullingGroup.targetCamera;
+		public Camera TargetCamera
+		{
+			get
+			{
+
+				Initialize();
+				return _cullingGroup.targetCamera;
+			}
+		}
 
 		public void Initialize()
 		{
+			if (_isInitialized)
+			{
+				return;
+			}
 			_isInitialized = true;
 			Application.quitting += OnQuitting;
 			_cullingGroup = new CullingGroup
@@ -113,11 +126,8 @@ namespace TW.CullingGroups
 
 		public int RegisterObject(CullingGroupTarget groupObject)
 		{
-			int index = -1;
-			if (!_isInitialized)
-			{
-				Initialize();
-			}
+
+			Initialize();
 			if (_objects.Contains(groupObject))
 			{
 				return -1;
@@ -126,7 +136,7 @@ namespace TW.CullingGroups
 			{
 				DynamicCullingGroupSingleton.Instance.Profile = this;
 			}
-			index = TryAdd(groupObject.Offset, groupObject.Radius);
+			int index = TryAdd(groupObject.Offset, groupObject.Radius);
 			if (index == -1)
 			{
 				Debug.LogWarning($"CullingGroupProfile: Failed to register object {groupObject}. Maximum object count reached.");
